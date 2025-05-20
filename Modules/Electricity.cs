@@ -8,6 +8,10 @@ using static DataImportClient.Ressources.ModuleConfigurations;
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Linq;
+using System.Threading;
+using System.Diagnostics.SymbolStore;
+using System;
 
 
 
@@ -16,6 +20,11 @@ using System.Data;
 namespace DataImportClient.Modules
 {
 
+    internal class DataRowEntry
+    {
+        public DateTime Datum { get; set; }
+        public List<decimal> Values { get; set; }
+    }
 
     internal class Electricity
     {
@@ -458,6 +467,28 @@ namespace DataImportClient.Modules
                 }
 
                 ImportWorkerLog("Successfully inserted the data 'Seconds' set into the database.");
+
+
+
+                ImportWorkerLog("Starting MinuteValues");
+
+                occurredError = await InsertMinuteValues(sqlConnectionString, cancellationToken);
+
+                if (occurredError != null)
+                {
+                    string errorMessage = "An error has occurred while inserting the data into the database.";
+                    string[] errorDetails = [occurredError.Message, occurredError.InnerException?.ToString() ?? string.Empty];
+                    ThrowModuleError(errorMessage, errorDetails, ErrorCategory.DatabaseInsertion);
+
+                    MoveSourceFileToFaultyFilesFolder();
+
+                    ImportWorkerLog($"Waiting for {errorTimoutInMilliseconds / 1000} seconds before continuing with the import process.");
+
+                    await Task.Delay(errorTimoutInMilliseconds, cancellationToken);
+                    continue;
+                }
+                
+                ImportWorkerLog("FINISHED MinuteValues");
 
 
 
@@ -1115,6 +1146,173 @@ namespace DataImportClient.Modules
                 string errorMessage = "Failed to move the current source file.";
                 string[] errorDetails = [exception.Message, exception.InnerException?.ToString() ?? string.Empty, $"File path: {_currentSourceFilePath}."];
                 ThrowModuleError(errorMessage, errorDetails, ErrorCategory.FileMoving);
+            }
+        }
+
+        private static async Task<Exception?> InsertMinuteValues(string sqlConnectionString, CancellationToken cancellationToken)
+        {
+            string fetchQuery = @"
+            WITH OrderedData AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (PARTITION BY DATEPART(HOUR, Datum), DATEPART(MINUTE, Datum)
+                                          ORDER BY Datum DESC) AS rn
+                FROM Strom_sec
+                WHERE Datum <= GETDATE()
+            )
+            SELECT TOP 5 *
+            FROM OrderedData
+            WHERE rn = 1
+            ORDER BY Datum DESC;";
+
+            List<string> columns = [];
+
+            for (int i = 1; i <= 27; i++)
+            {
+                columns.Add($"Power{i}");
+                columns.Add($"Phi{i}");
+            }
+
+
+
+            ImportWorkerLog("Trying to establish a database connection for minute insertion.");
+
+            SqlConnection databaseConnection;
+
+            try
+            {
+                if (sqlConnectionString.Contains("connect timeout", StringComparison.CurrentCultureIgnoreCase) == false)
+                {
+                    sqlConnectionString += "Connect Timeout=5;";
+                }
+
+                databaseConnection = new(sqlConnectionString);
+
+                await databaseConnection.OpenAsync(cancellationToken);
+            }
+            catch (SqlException exception)
+            {
+                if (exception.Number == -2)
+                {
+                    return new Exception("Failed to establish a database connection due to a timeout.");
+                }
+
+                return new Exception("Failed to establish a database connection. " + exception.Message);
+            }
+            catch (Exception exception)
+            {
+                return new Exception("An error occurred while connection to the database. " + exception.Message);
+            }
+
+            ImportWorkerLog("Successfully established a database connection for minute insertion.");
+
+            List<DataRowEntry> rowsToInsert = new List<DataRowEntry>();
+
+            try
+            {
+                using (SqlCommand fetchCmd = new SqlCommand(fetchQuery, databaseConnection))
+                using (SqlDataReader reader = fetchCmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        DateTime datum = (DateTime)reader["Datum"];
+                        List<decimal> values = new List<decimal>();
+
+                        foreach (var col in columns)
+                        {
+                            values.Add(Convert.ToDecimal(reader[col]));
+                        }
+
+                        rowsToInsert.Add(new DataRowEntry
+                        {
+                            Datum = datum,
+                            Values = values
+                        });
+                    }
+                }
+
+
+
+                // Step 2: After reader is closed, process rows
+                foreach (var row in rowsToInsert)
+                {
+                    DateTime minuteMark = new DateTime(row.Datum.Year, row.Datum.Month, row.Datum.Day, row.Datum.Hour, row.Datum.Minute, 0);
+
+                    if (!MinuteMarkExists(databaseConnection, minuteMark))
+                    {
+                        Exception? exc = await InsertIntoProcessedData(databaseConnection, row.Datum, columns, row.Values, cancellationToken);
+
+                        if (exc != null)
+                        {
+                            throw exc;
+                        }
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                return exc;
+            }
+            
+
+            return null;
+        }
+
+        private void InsertHourValues()
+        {
+
+        }
+
+        static bool MinuteMarkExists(SqlConnection conn, DateTime minuteMark)
+        {
+            string checkQuery = @"
+            SELECT COUNT(*) 
+            FROM Strom_min 
+            WHERE DATEPART(HOUR, Datum) = @Hour 
+              AND DATEPART(MINUTE, Datum) = @Minute 
+              AND CAST(Datum AS DATE) = @Date";
+
+            using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+            {
+                checkCmd.Parameters.AddWithValue("@Hour", minuteMark.Hour);
+                checkCmd.Parameters.AddWithValue("@Minute", minuteMark.Minute);
+                checkCmd.Parameters.AddWithValue("@Date", minuteMark.Date);
+
+                int count = (int)checkCmd.ExecuteScalar();
+
+                bool isGreaterThanZero = count > 0;
+
+                ImportWorkerLog($"Received count: {isGreaterThanZero}", true);
+
+                return isGreaterThanZero;
+            }
+        }
+
+        private static async Task<Exception?> InsertIntoProcessedData(SqlConnection conn, DateTime datum, List<string> columns, List<decimal> values, CancellationToken cancellationToken)
+        {
+            try
+            {
+                string columnNames = "Datum, " + string.Join(", ", columns);
+                string paramNames = "@Datum, " + string.Join(", ", columns.ConvertAll(c => "@" + c));
+
+                string insertQuery = $@"
+            INSERT INTO Strom_min ({columnNames})
+            VALUES ({paramNames});";
+
+                using SqlCommand insertCmd = new(insertQuery, conn);
+                insertCmd.Parameters.AddWithValue("@Datum", datum);
+
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    insertCmd.Parameters.AddWithValue("@" + columns[i], values[i]);
+                }
+
+                await insertCmd.ExecuteScalarAsync(cancellationToken);
+
+                return null;
+            }
+            catch (Exception exc)
+            {
+                return exc;
             }
         }
     }
