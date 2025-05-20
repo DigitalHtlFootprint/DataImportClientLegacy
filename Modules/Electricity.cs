@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 
 using DataImportClient.Scripts;
@@ -7,11 +8,6 @@ using static DataImportClient.Ressources.ModuleConfigurations;
 
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
-using System.Data;
-using System.Linq;
-using System.Threading;
-using System.Diagnostics.SymbolStore;
-using System;
 
 
 
@@ -1221,6 +1217,8 @@ namespace DataImportClient.Modules
                         {
                             values.Add(Convert.ToDecimal(reader[col]));
                         }
+
+                        values.Reverse();
 
                         rowsToInsert.Add(new DataRowEntry
                         {
