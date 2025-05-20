@@ -7,6 +7,7 @@ using static DataImportClient.Ressources.ModuleConfigurations;
 
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
+using System.Data;
 
 
 
@@ -16,14 +17,8 @@ namespace DataImportClient.Modules
 {
     internal struct WeatherData
     {
-        internal decimal longitude;
-        internal decimal latitude;
-        internal string weatherType;
-        internal decimal humidity;
         internal decimal windSpeed;
         internal decimal temperature;
-        internal int sunsetUnixSeconds;
-        internal int sunriseUnixSeconds;
     }
 
 
@@ -565,35 +560,20 @@ namespace DataImportClient.Modules
 
             try
             {
-                string dataLatitude = apiData?["coord"]?["lat"]?.ToString() ?? string.Empty;
-                string dataLongitude = apiData?["coord"]?["lon"]?.ToString() ?? string.Empty;
-                string dataHumidity = apiData?["main"]?["humidity"]?.ToString() ?? string.Empty;
                 string dataWindSpeed = apiData?["wind"]?["speed"]?.ToString() ?? string.Empty;
                 string dataTemperature = apiData?["main"]?["temp"]?.ToString() ?? string.Empty;
-                string dataWeatherType = apiData?["weather"]?[0]?["main"]?.ToString() ?? string.Empty;
-                string dataSunsetUnixSeconds = apiData?["sys"]?["sunset"]?.ToString() ?? string.Empty;
-                string dataSunriseUnixSeconds = apiData?["sys"]?["sunrise"]?.ToString() ?? string.Empty;
 
+                bool validDecimalApiValues = ConsoleHelper.ValidDecimalValues([dataWindSpeed, dataTemperature]);
 
-
-                bool validIntApiValues = ConsoleHelper.ValidDecimalValues([dataLatitude, dataLongitude, dataHumidity, dataWindSpeed, dataTemperature]);
-                bool validDecimalApiValues = ConsoleHelper.ValidIntValues([dataSunsetUnixSeconds, dataSunriseUnixSeconds]);
-
-                if (string.IsNullOrWhiteSpace(dataWeatherType) || validIntApiValues == false || validDecimalApiValues == false)
+                if (validDecimalApiValues == false)
                 {
-                    throw new Exception($"The fetched API data contains invalid values. Weather type: '{dataWeatherType}' | Valid decimal values: '{validDecimalApiValues}' | Valid int values: '{validIntApiValues}'");
+                    throw new Exception($"The fetched API data contains invalid values. Valid decimal values: '{validDecimalApiValues}'");
                 }
 
                 WeatherData weatherData = new()
                 {
-                    humidity = Convert.ToDecimal(dataHumidity),
-                    latitude = Convert.ToDecimal(dataLatitude),
-                    longitude = Convert.ToDecimal(dataLongitude),
                     windSpeed = Convert.ToDecimal(dataWindSpeed),
                     temperature = Convert.ToDecimal(dataTemperature),
-                    weatherType = dataWeatherType,
-                    sunriseUnixSeconds = Convert.ToInt32(dataSunriseUnixSeconds),
-                    sunsetUnixSeconds = Convert.ToInt32(dataSunsetUnixSeconds),
                 };
 
 
@@ -625,20 +605,20 @@ namespace DataImportClient.Modules
 
             try
             {
-                string queryNames = "longitude, latitude, weather_type, sunrise_unix_seconds, sunset_unix_seconds, humidity, windspeed, temperature";
-                string queryValues = "@longitude, @latitude, @weather_type, @sunrise_unix_seconds, @sunset_unix_seconds, @humidity, @windspeed, @temperature";
+                DateTime now = DateTime.Now;
+                DateTime datum = now.Date;
+                TimeSpan zeit = now.TimeOfDay;
+
+                string queryNames = "Windgeschw, Aussentemp, Datum, Zeit";
+                string queryValues = "@Windgeschw, @Aussentemp, @Datum, @Zeit";
                 string insertDataQuery = $"INSERT INTO {dbTableName} ({queryNames}) VALUES ({queryValues});";
 
                 using SqlCommand insertCommand = new(insertDataQuery, databaseConnection);
 
-                insertCommand.Parameters.AddWithValue("@longitude", weatherData.longitude);
-                insertCommand.Parameters.AddWithValue("@latitude", weatherData.latitude);
-                insertCommand.Parameters.AddWithValue("@weather_type", weatherData.weatherType);
-                insertCommand.Parameters.AddWithValue("@sunrise_unix_seconds", weatherData.sunriseUnixSeconds);
-                insertCommand.Parameters.AddWithValue("@sunset_unix_seconds", weatherData.sunsetUnixSeconds);
-                insertCommand.Parameters.AddWithValue("@humidity", weatherData.humidity);
-                insertCommand.Parameters.AddWithValue("@windspeed", weatherData.windSpeed);
-                insertCommand.Parameters.AddWithValue("@temperature", weatherData.temperature);
+                insertCommand.Parameters.Add("@Datum", SqlDbType.Date).Value = datum;
+                insertCommand.Parameters.Add("@Zeit", SqlDbType.Time).Value = zeit;
+                insertCommand.Parameters.AddWithValue("@Windgeschw", weatherData.windSpeed);
+                insertCommand.Parameters.AddWithValue("@Aussentemp", weatherData.temperature);
 
                 await insertCommand.ExecuteNonQueryAsync(cancellationToken);
             }

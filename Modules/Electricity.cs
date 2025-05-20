@@ -7,6 +7,7 @@ using static DataImportClient.Ressources.ModuleConfigurations;
 
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
+using System.Data;
 
 
 
@@ -395,6 +396,7 @@ namespace DataImportClient.Modules
 
                 ImportWorkerLog("Minimizing the fetched data.");
 
+                List<string> originalDataSet = new(sourceFileData);
                 (List<string> minimizedSourceData, occurredError) = MinimizeSourceFileData(sourceFileData);
 
                 if (occurredError != null)
@@ -417,11 +419,29 @@ namespace DataImportClient.Modules
 
                 ImportWorkerLog("Inserting the minimized data set into the database.");
 
-                string dbTableNamePower = electricityConfiguration.dbTableNamePower;
-                string dbTableNamePowerfactor = electricityConfiguration.dbTableNamePowerfactor;
                 string sqlConnectionString = electricityConfiguration.sqlConnectionString;
 
-                occurredError = await InsertDataIntoDatabase(sqlConnectionString, dbTableNamePower, dbTableNamePowerfactor, minimizedSourceData, cancellationToken);
+                occurredError = await InsertDataIntoDatabase(sqlConnectionString, "Strom_milli", originalDataSet, cancellationToken);
+                
+                if (occurredError != null)
+                {
+                    string errorMessage = "An error has occurred while inserting the data into the database.";
+                    string[] errorDetails = [occurredError.Message, occurredError.InnerException?.ToString() ?? string.Empty];
+                    ThrowModuleError(errorMessage, errorDetails, ErrorCategory.DatabaseInsertion);
+
+                    MoveSourceFileToFaultyFilesFolder();
+
+                    ImportWorkerLog($"Waiting for {errorTimoutInMilliseconds / 1000} seconds before continuing with the import process.");
+
+                    await Task.Delay(errorTimoutInMilliseconds, cancellationToken);
+                    continue;
+                }
+
+                ImportWorkerLog("Successfully inserted the data 'Milliseconds' set into the database.");
+
+
+
+                occurredError = await InsertDataIntoDatabase(sqlConnectionString, "Strom_sec", minimizedSourceData, cancellationToken);
 
                 if (occurredError != null)
                 {
@@ -437,7 +457,7 @@ namespace DataImportClient.Modules
                     continue;
                 }
 
-                ImportWorkerLog("Successfully inserted the data set into the database.");
+                ImportWorkerLog("Successfully inserted the data 'Seconds' set into the database.");
 
 
 
@@ -824,13 +844,16 @@ namespace DataImportClient.Modules
             return (minimizedSourceData, null);
         }
 
-        private static async Task<Exception?> InsertDataIntoDatabase(string sqlConnectionString, string dbTableNamePower, string dbTableNamePowerfactor, List<string> sourceData, CancellationToken cancellationToken)
+        private static async Task<Exception?> InsertDataIntoDatabase(string sqlConnectionString, string dbTableName, List<string> sourceData, CancellationToken cancellationToken)
         {
+            ImportWorkerLog($"[DEBUG] RECEIVED '{sourceData.Count}' LINES OF DATA FOR DBTABLE '{dbTableName}'.");
+
             (List<string> powerData, List<string> powerfactorData, Exception? occurredError) = SplitSourceData(sourceData);
-            
+
             if (occurredError != null)
             {
                 return new Exception("Failed to split the minimalized data set. " + occurredError.Message);
+
             }
 
             ImportWorkerLog("Successfully splitted the minimalized data set for the database import.");
@@ -903,33 +926,64 @@ namespace DataImportClient.Modules
 
                 string[] columnsOrder =
                 [
-                    "@einspeisung_L1",
-                    "@einspeisung_L2",
-                    "@einspeisung_L3",
-                    "@werkstatterweiterung_L1",
-                    "@werkstatterweiterung_L2",
-                    "@werkstatterweiterung_L3",
-                    "@flur_zimmerei_L1",
-                    "@flur_zimmerei_L2",
-                    "@flur_zimmerei_L3",
-                    "@flur_tischlerei_L1",
-                    "@flur_tischlerei_L2",
-                    "@flur_tischlerei_L3",
-                    "@absaugung_tischlerei_L1",
-                    "@absaugung_tischlerei_L2",
-                    "@absaugung_tischlerei_L3",
-                    "@theorie_L1",
-                    "@theorie_L2",
-                    "@theorie_L3",
-                    "@tischlerei_L1",
-                    "@tischlerei_L2",
-                    "@tischlerei_L3",
-                    "@keller_L1",
-                    "@keller_L2",
-                    "@keller_L3",
-                    "@absaugung_steinmetz_L1",
-                    "@absaugung_steinmetz_L2",
-                    "@absaugung_steinmetz_L3"
+                    "@Power1",
+                    "@Power2",
+                    "@Power3",
+                    "@Power4",
+                    "@Power5",
+                    "@Power6",
+                    "@Power7",
+                    "@Power8",
+                    "@Power9",
+                    "@Power10",
+                    "@Power11",
+                    "@Power12",
+                    "@Power13",
+                    "@Power14",
+                    "@Power15",
+                    "@Power16",
+                    "@Power17",
+                    "@Power18",
+                    "@Power19",
+                    "@Power20",
+                    "@Power21",
+                    "@Power22",
+                    "@Power23",
+                    "@Power24",
+                    "@Power25",
+                    "@Power26",
+                    "@Power27",
+                ];
+
+                string[] columnsOrderPhi =
+                [
+                    "@phi1",
+                    "@phi2",
+                    "@phi3",
+                    "@phi4",
+                    "@phi5",
+                    "@phi6",
+                    "@phi7",
+                    "@phi8",
+                    "@phi9",
+                    "@phi10",
+                    "@phi11",
+                    "@phi12",
+                    "@phi13",
+                    "@phi14",
+                    "@phi15",
+                    "@phi16",
+                    "@phi17",
+                    "@phi18",
+                    "@phi19",
+                    "@phi20",
+                    "@phi21",
+                    "@phi22",
+                    "@phi23",
+                    "@phi24",
+                    "@phi25",
+                    "@phi26",
+                    "@phi27",
                 ];
 
 
@@ -938,47 +992,27 @@ namespace DataImportClient.Modules
 
                 try
                 {
-                    string queryNamesPower = "power_date, power_time, " + string.Join(", ", columnsOrder).Replace("@", string.Empty);
-                    string queryValuesPower = "@power_date, @power_time, " + string.Join(", ", columnsOrder);
-                    string queryInsertPower = $"INSERT INTO {dbTableNamePower} ({queryNamesPower}) VALUES ({queryValuesPower}); SELECT SCOPE_IDENTITY();";
+                    string queryNames = "Datum, " + string.Join(", ", columnsOrder).Replace("@", string.Empty) + ", " + string.Join(", ", columnsOrderPhi).Replace("@", string.Empty);
+                    string queryValues = "@Datum, " + string.Join(", ", columnsOrder) + ", " + string.Join(", ", columnsOrderPhi);
+                    string queryInsert = $"INSERT INTO {dbTableName} ({queryNames}) VALUES ({queryValues});";
                     
-                    using SqlCommand insertCommandPower = new(queryInsertPower, databaseConnection, transaction);
+                    using SqlCommand insertCommand = new(queryInsert, databaseConnection, transaction);
 
-                    insertCommandPower.Parameters.AddWithValue("@power_date", importDate);
-                    insertCommandPower.Parameters.AddWithValue("@power_time", importTime);
+                    DateTime fullDateTime = importDate.Add(importTime);
+                    insertCommand.Parameters.Add("@Datum", SqlDbType.DateTime).Value = fullDateTime;
+
 
                     for (int columnIndex = 0; columnIndex < columnsOrder.Length; columnIndex++)
                     {
-                        insertCommandPower.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerDataRow.Split(";")[columnIndex]));
+                        insertCommand.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerDataRow.Split(";")[columnIndex]));
                     }
 
-                    int lastPowerId = -1;
-
-                    lastPowerId = Convert.ToInt32(await insertCommandPower.ExecuteScalarAsync(cancellationToken));
-
-                    if (lastPowerId == -1)
+                    for (int columnIndex = 0; columnIndex < columnsOrderPhi.Length; columnIndex++)
                     {
-                        throw new Exception("Failed to get last inserted PowerId.");
+                        insertCommand.Parameters.AddWithValue(columnsOrderPhi[columnIndex], Convert.ToDecimal(currentPowerfactorDataRow.Split(";")[columnIndex]));
                     }
 
-
-
-                    string queryNamesPowerfactor = "powerfactor_date, powerfactor_time, power_id, " + string.Join(", ", columnsOrder).Replace("@", string.Empty);
-                    string queryValuesPowerfactor = "@powerfactor_date, @powerfactor_time, @power_id, " + string.Join(", ", columnsOrder);
-                    string queryInsertPowerfactor = $"INSERT INTO {dbTableNamePowerfactor} ({queryNamesPowerfactor}) VALUES ({queryValuesPowerfactor}); SELECT SCOPE_IDENTITY();";
-
-                    using SqlCommand insertCommandPowerfactor = new(queryInsertPowerfactor, databaseConnection, transaction);
-
-                    insertCommandPowerfactor.Parameters.AddWithValue("@powerfactor_date", importDate);
-                    insertCommandPowerfactor.Parameters.AddWithValue("@powerfactor_time", importTime);
-                    insertCommandPowerfactor.Parameters.AddWithValue("@power_id", lastPowerId);
-
-                    for (int columnIndex = 0; columnIndex < columnsOrder.Length; columnIndex++)
-                    {
-                        insertCommandPowerfactor.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerfactorDataRow.Split(";")[columnIndex]));
-                    }
-
-                    await insertCommandPowerfactor.ExecuteNonQueryAsync(cancellationToken);
+                    await insertCommand.ExecuteScalarAsync(cancellationToken);
 
                     transaction.Commit();
                 }

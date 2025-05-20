@@ -8,6 +8,7 @@ using static DataImportClient.Ressources.ModuleConfigurations;
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
 using Microsoft.Playwright;
+using System.Data;
 
 
 
@@ -393,7 +394,8 @@ namespace DataImportClient.Modules
 
                 ImportWorkerLog("Inserting the fetched data set into the database.");
 
-                occurredError = await InsertDataIntoDatabase(photovoltaicConfiguration.sqlConnectionString, photovoltaicConfiguration.dbTableName, currentPvPower, cancellationToken);
+                occurredError = await InsertDataIntoDatabase(photovoltaicConfiguration.sqlConnectionString, "Solardaten", currentPvPower, cancellationToken);
+                occurredError = await InsertDataIntoDatabase(photovoltaicConfiguration.sqlConnectionString, "Solardaten_old", currentPvPower, cancellationToken);
 
                 if (occurredError != null)
                 {
@@ -728,13 +730,20 @@ namespace DataImportClient.Modules
 
             try
             {
-                string queryNames = "pv_leistung_watt";
-                string queryValues = "@pv_leistung_watt";
+                DateTime now = DateTime.Now;
+                DateTime datum = now.Date;
+                TimeSpan zeit = now.TimeOfDay;
+
+                string queryNames = "Datum, Zeit, AktuellerErtrag, Daysum";
+                string queryValues = "@Datum, @Zeit, @AktuellerErtrag, @Daysum";
                 string insertDataQuery = $"INSERT INTO {dbTableName} ({queryNames}) VALUES ({queryValues});";
 
                 using SqlCommand insertCommand = new(insertDataQuery, databaseConnection);
 
-                insertCommand.Parameters.AddWithValue("@pv_leistung_watt", currentPvPower);
+                insertCommand.Parameters.Add("@Datum", SqlDbType.Date).Value = datum;
+                insertCommand.Parameters.Add("@Zeit", SqlDbType.Time).Value = zeit;
+                insertCommand.Parameters.Add("@AktuellerErtrag", SqlDbType.Int).Value = currentPvPower;
+                insertCommand.Parameters.Add("@Daysum", SqlDbType.Int).Value = 0;
 
                 await insertCommand.ExecuteNonQueryAsync(cancellationToken);
             }
