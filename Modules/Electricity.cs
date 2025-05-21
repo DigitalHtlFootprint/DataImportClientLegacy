@@ -1201,17 +1201,17 @@ namespace DataImportClient.Modules
 
             ImportWorkerLog("Successfully established a database connection for minute insertion.");
 
-            List<DataRowEntry> rowsToInsert = new List<DataRowEntry>();
+            List<DataRowEntry> rowsToInsert = [];
 
             try
             {
-                using (SqlCommand fetchCmd = new SqlCommand(fetchQuery, databaseConnection))
+                using (SqlCommand fetchCmd = new(fetchQuery, databaseConnection))
                 using (SqlDataReader reader = fetchCmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         DateTime datum = (DateTime)reader["Datum"];
-                        List<decimal> values = new List<decimal>();
+                        List<decimal> values = [];
 
                         foreach (var col in columns)
                         {
@@ -1225,6 +1225,10 @@ namespace DataImportClient.Modules
                         });
                     }
                 }
+
+
+
+                rowsToInsert.Reverse();
 
 
 
@@ -1248,7 +1252,7 @@ namespace DataImportClient.Modules
             {
                 return exc;
             }
-            
+
 
             return null;
         }
