@@ -1218,8 +1218,6 @@ namespace DataImportClient.Modules
                             values.Add(Convert.ToDecimal(reader[col]));
                         }
 
-                        values.Reverse();
-
                         rowsToInsert.Add(new DataRowEntry
                         {
                             Datum = datum,
