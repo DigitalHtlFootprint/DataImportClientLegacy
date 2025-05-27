@@ -180,22 +180,18 @@ namespace DataImportClientLegacy
                             ["apiKey"] = "REDACTED",
                             ["apiLocation"] = "CITY,COUNTRYCODE",
                             ["apiIntervalSeconds"] = 300,
-                            ["dbTableName"] = "dbo.Weather"
                         },
                         ["electricity"] = new JObject()
                         {
                             ["sourceFilePath"] = "folder/of/source/file",
                             ["sourceFilePattern"] = "FILENAME.EXTENSION",
                             ["sourceFileIntervalSeconds"] = 125,
-                            ["dbTableNamePower"] = "dbo.ElectricityPower",
-                            ["dbTableNamePowerfactor"] = "dbo.ElectricityPowerfactor",
                         },
                         ["districtHeat"] = new JObject()
                         {
                             ["sourceFilePath"] = "folder/of/source/file",
                             ["sourceFilePattern"] = "FILENAME.EXTENSION",
                             ["sourceFileIntervalSeconds"] = 300,
-                            ["dbTableName"] = "dbo.DistrictHeat",
                         },
                         ["photovoltaic"] = new JObject()
                         {
@@ -203,7 +199,6 @@ namespace DataImportClientLegacy
                             ["solarwebPassword"] = "REDACTED",
                             ["solarwebSystemId"] = "REDACTED",
                             ["sourceFileIntervalSeconds"] = 300,
-                            ["dbTableName"] = "dbo.Photovoltaic",
                         }
                     };
 
