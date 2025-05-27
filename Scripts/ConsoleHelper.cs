@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 
 
 
-namespace DataImportClient.Scripts
+namespace DataImportClientLegacy.Scripts
 {
     internal class ConsoleHelper
     {

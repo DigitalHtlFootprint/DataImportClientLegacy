@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 
-using DataImportClient.Scripts;
-using DataImportClient.Ressources;
+using DataImportClientLegacy.Scripts;
+using DataImportClientLegacy.Ressources;
 
 using Newtonsoft.Json.Linq;
 
@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 
 
-namespace DataImportClient.Modules
+namespace DataImportClientLegacy.Modules
 {
     enum ErrorCategory
     {

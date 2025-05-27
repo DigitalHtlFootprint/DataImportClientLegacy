@@ -1,5 +1,5 @@
-﻿using DataImportClient.Modules;
-using DataImportClient.Scripts;
+﻿using DataImportClientLegacy.Modules;
+using DataImportClientLegacy.Scripts;
 
 using Newtonsoft.Json.Linq;
 
@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 
 
-namespace DataImportClient
+namespace DataImportClientLegacy
 {
     enum ModuleState
     {
@@ -276,7 +276,7 @@ namespace DataImportClient
         {
             Console.Clear();
             Console.SetCursorPosition(0, 4);
-            Console.WriteLine("             DataImportClient (C) Made in Austria     ");
+            Console.WriteLine("             DataImportClientLegacy (C) Made in Austria     ");
             Console.WriteLine("             ─────────────────────────────────────────");
             Console.Write("             Starting modules, please be patient ");
 

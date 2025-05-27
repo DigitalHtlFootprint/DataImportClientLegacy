@@ -1,4 +1,4 @@
-﻿namespace DataImportClient.Ressources
+﻿namespace DataImportClientLegacy.Ressources
 {
     internal class ApplicationSettings
     {
@@ -38,7 +38,7 @@
             internal Paths()
             {
                 appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                clientFolder = Path.Combine(appDataFolder, "DataImportClient");
+                clientFolder = Path.Combine(appDataFolder, "DataImportClientLegacy");
                 logsFolder = Path.Combine(clientFolder, "runtimeLogs");
                 configurationFile = Path.Combine(clientFolder, "appConfiguration.json");
 

@@ -1,13 +1,13 @@
 ﻿using System.Diagnostics;
 
-using DataImportClient.Scripts;
-using DataImportClient.Ressources;
+using DataImportClientLegacy.Scripts;
+using DataImportClientLegacy.Ressources;
 
 
 
 
 
-namespace DataImportClient.Modules
+namespace DataImportClientLegacy.Modules
 {
     class Miscellaneous
     {

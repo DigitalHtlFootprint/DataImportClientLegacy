@@ -1,10 +1,10 @@
-﻿using DataImportClient.Ressources;
+﻿using DataImportClientLegacy.Ressources;
 
 
 
 
 
-namespace DataImportClient.Scripts
+namespace DataImportClientLegacy.Scripts
 {
     internal class ActivityLogger
     {

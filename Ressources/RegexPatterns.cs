@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 
 
-namespace DataImportClient.Ressources
+namespace DataImportClientLegacy.Ressources
 {
     internal partial class RegexPatterns
     {

@@ -1,7 +1,7 @@
 ﻿using System.Text;
 
-using DataImportClient.Scripts;
-using DataImportClient.Ressources;
+using DataImportClientLegacy.Scripts;
+using DataImportClientLegacy.Ressources;
 
 using Newtonsoft.Json.Linq;
 
@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 
 
-namespace DataImportClient
+namespace DataImportClientLegacy
 {
     internal class EntryPoint
     {
@@ -28,7 +28,7 @@ namespace DataImportClient
             ActivityLogger.Log(_currentSection, string.Empty, true);
             ActivityLogger.Log(_currentSection, string.Empty, true);
             ActivityLogger.Log(_currentSection, string.Empty, true);
-            ActivityLogger.Log(_currentSection, "Starting DataImportClient (C) Made in Austria");
+            ActivityLogger.Log(_currentSection, "Starting DataImportClientLegacy (C) Made in Austria");
             ActivityLogger.Log(_currentSection, $"Version '{appVersion}' | Release '{appRelease}'");
 
 
@@ -84,7 +84,7 @@ namespace DataImportClient
 
 
             Console.CursorVisible = false;
-            Console.Title = "DataImportClient";
+            Console.Title = "DataImportClientLegacy";
             Console.OutputEncoding = Encoding.UTF8;
 
 
@@ -95,7 +95,7 @@ namespace DataImportClient
 
 
 
-            ActivityLogger.Log(_currentSection, "Shutting down DataImportClient ...");
+            ActivityLogger.Log(_currentSection, "Shutting down DataImportClientLegacy ...");
 
             Environment.Exit(0);
         }
@@ -104,7 +104,7 @@ namespace DataImportClient
         {
             Console.Clear();
             Console.SetCursorPosition(0, 4);
-            Console.WriteLine("             DataImportClient (C) Made in Austria     ");
+            Console.WriteLine("             DataImportClientLegacy (C) Made in Austria     ");
             Console.WriteLine("             ──────────────────────────────────────────");
             Console.WriteLine("             Installing dependencies, please be patient");
             Console.WriteLine();

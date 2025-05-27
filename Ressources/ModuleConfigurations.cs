@@ -1,4 +1,4 @@
-﻿namespace DataImportClient.Ressources
+﻿namespace DataImportClientLegacy.Ressources
 {
     internal class ModuleConfigurations
     {

@@ -1,9 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 
-using DataImportClient.Scripts;
-using DataImportClient.Ressources;
-using static DataImportClient.Ressources.ModuleConfigurations;
+using DataImportClientLegacy.Scripts;
+using DataImportClientLegacy.Ressources;
+using static DataImportClientLegacy.Ressources.ModuleConfigurations;
 
 using Newtonsoft.Json.Linq;
 using Microsoft.Data.SqlClient;
@@ -12,7 +12,7 @@ using Microsoft.Data.SqlClient;
 
 
 
-namespace DataImportClient.Modules
+namespace DataImportClientLegacy.Modules
 {
     internal class DistrictHeat
     {

@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 
 
-namespace DataImportClient.Scripts
+namespace DataImportClientLegacy.Scripts
 {
     internal class EmailClient
     {

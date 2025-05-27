@@ -1,4 +1,4 @@
-﻿using DataImportClient.Ressources;
+﻿using DataImportClientLegacy.Ressources;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 
 
-namespace DataImportClient.Scripts
+namespace DataImportClientLegacy.Scripts
 {
     internal class ConfigurationHelper
     {
