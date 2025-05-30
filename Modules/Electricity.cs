@@ -464,17 +464,15 @@ namespace DataImportClientLegacy.Modules
 
 
 
-                ImportWorkerLog("Successfully inserted the data set into the database.");
+                ImportWorkerLog("Calculating minute values for the last minutes.");
 
                 occurredError = await InsertMinuteValues(sqlConnectionString, cancellationToken);
 
                 if (occurredError != null)
                 {
-                    string errorMessage = "An error has occurred while inserting the data into the database.";
+                    string errorMessage = "An error has occurred while calculating minute values.";
                     string[] errorDetails = [occurredError.Message, occurredError.InnerException?.ToString() ?? string.Empty];
                     ThrowModuleError(errorMessage, errorDetails, ErrorCategory.DatabaseInsertion);
-
-                    MoveSourceFileToFaultyFilesFolder();
 
                     ImportWorkerLog($"Waiting for {errorTimoutInMilliseconds / 1000} seconds before continuing with the import process.");
 
@@ -482,7 +480,7 @@ namespace DataImportClientLegacy.Modules
                     continue;
                 }
 
-                ImportWorkerLog("Successfully inserted the data set into the database.");
+                ImportWorkerLog("Successfully calculated minute values.");
 
 
 

@@ -38,11 +38,10 @@
             internal string sourceFilePattern;
             internal string sourceFileIntervalSeconds;
             internal string sqlConnectionString;
-            internal string dbTableName;
 
             internal readonly bool HoldsInvalidValues()
             {
-                var stringFields = new string[] { sourceFilePath, sourceFilePattern, sourceFileIntervalSeconds, sqlConnectionString, dbTableName };
+                var stringFields = new string[] { sourceFilePath, sourceFilePattern, sourceFileIntervalSeconds, sqlConnectionString };
                 return stringFields.Any(string.IsNullOrEmpty);
             }
         }

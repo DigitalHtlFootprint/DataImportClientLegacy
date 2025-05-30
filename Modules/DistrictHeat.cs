@@ -392,10 +392,9 @@ namespace DataImportClientLegacy.Modules
 
                 ImportWorkerLog("Inserting the fetched data set into the database.");
 
-                string dbTableName = districtHeatConfiguration.dbTableName;
                 string sqlConnectionString = districtHeatConfiguration.sqlConnectionString;
 
-                occurredError = await InsertDataIntoDatabase(sqlConnectionString, dbTableName, sourceFileData, cancellationToken);
+                occurredError = await InsertDataIntoDatabase(sqlConnectionString, "Fernwaerme", sourceFileData, cancellationToken);
 
                 if (occurredError != null)
                 {
@@ -514,8 +513,7 @@ namespace DataImportClientLegacy.Modules
                     sourceFilePath = districtHeatModule?["sourceFilePath"]?.ToString() ?? string.Empty,
                     sourceFilePattern = districtHeatModule?["sourceFilePattern"]?.ToString() ?? string.Empty,
                     sourceFileIntervalSeconds = districtHeatModule?["sourceFileIntervalSeconds"]?.ToString() ?? string.Empty,
-                    sqlConnectionString = sqlData?["connectionString"]?.ToString() ?? string.Empty,
-                    dbTableName = districtHeatModule?["dbTableName"]?.ToString() ?? string.Empty,
+                    sqlConnectionString = sqlData?["connectionString"]?.ToString() ?? string.Empty
                 };
 
                 if (districtHeatConfiguration.HoldsInvalidValues() == true)
@@ -655,7 +653,7 @@ namespace DataImportClientLegacy.Modules
             while (sourceData.Count > 0)
             {
                 string currentDataRow = sourceData[0];
-                
+
                 if (RegexPatterns.AllWhitespaces().Replace(currentDataRow, string.Empty).Equals(string.Empty))
                 {
                     sourceData.RemoveAt(0);
@@ -667,13 +665,12 @@ namespace DataImportClientLegacy.Modules
 
 
                 int zaehlerId;
-
-                decimal energie;
-                decimal volumen;
-                decimal leistung;
-                decimal durchfluss;
                 decimal vorlauf;
                 decimal ruecklauf;
+                decimal leistung;
+                float energie;
+                float volumen;
+                float durchfluss;
 
                 DateTime heatImportDate;
                 DateTime heatImportTime;
@@ -683,18 +680,19 @@ namespace DataImportClientLegacy.Modules
                 try
                 {
                     zaehlerId = Convert.ToInt32(importValues[0]);
-
-                    volumen = Convert.ToDecimal(importValues[1]);
-                    energie = Convert.ToDecimal(importValues[2]);
-                    leistung = Convert.ToDecimal(importValues[3]);
-                    durchfluss = Convert.ToDecimal(importValues[4]);
-                    vorlauf = Convert.ToDecimal(importValues[5]);
-                    ruecklauf = Convert.ToDecimal(importValues[6]);
+                    volumen = float.Parse(importValues[1], CultureInfo.InvariantCulture);
+                    energie = float.Parse(importValues[2], CultureInfo.InvariantCulture);
+                    leistung = decimal.Parse(importValues[3], CultureInfo.InvariantCulture);
+                    durchfluss = float.Parse(importValues[4], CultureInfo.InvariantCulture);
+                    vorlauf = decimal.Parse(importValues[5], CultureInfo.InvariantCulture);
+                    ruecklauf = decimal.Parse(importValues[6], CultureInfo.InvariantCulture);
                 }
                 catch (Exception exception)
                 {
                     return new Exception("Failed to convert PLC data. " + exception.Message);
                 }
+
+
 
                 try
                 {
@@ -717,24 +715,24 @@ namespace DataImportClientLegacy.Modules
                 }
 
 
-                
+
                 try
                 {
-                    string queryNames = "heatimport_date, heatimport_time, zaehler_id, energie, volumen, leistung, durchfluss, vorlauf, ruecklauf";
-                    string queryValues = "@heatimport_date, @heatimport_time, @zaehler_id, @energie, @volumen, @leistung, @durchfluss, @vorlauf, @ruecklauf";
+                    string queryNames = "ZaehlerID, Vorlauf, Ruecklauf, Leistung, Volumen, Durchfluss, Energie, Datum, Uhrzeit";
+                    string queryValues = "@ZaehlerID, @Vorlauf, @Ruecklauf, @Leistung, @Volumen, @Durchfluss, @Energie, @Datum, @Uhrzeit";
                     string queryInsert = $"INSERT INTO {dbTableName} ({queryNames}) VALUES ({queryValues});";
 
                     using SqlCommand insertCommand = new(queryInsert, databaseConnection);
 
-                    insertCommand.Parameters.AddWithValue("@heatimport_date", heatImportDate);
-                    insertCommand.Parameters.AddWithValue("@heatimport_time", heatImportTime);
-                    insertCommand.Parameters.AddWithValue("@zaehler_id", zaehlerId);
-                    insertCommand.Parameters.AddWithValue("@energie", energie);
-                    insertCommand.Parameters.AddWithValue("@volumen", volumen);
-                    insertCommand.Parameters.AddWithValue("@leistung", leistung);
-                    insertCommand.Parameters.AddWithValue("@durchfluss", durchfluss);
-                    insertCommand.Parameters.AddWithValue("@vorlauf", vorlauf);
-                    insertCommand.Parameters.AddWithValue("@ruecklauf", ruecklauf);
+                    insertCommand.Parameters.AddWithValue("@ZaehlerID", zaehlerId);
+                    insertCommand.Parameters.AddWithValue("@Vorlauf", vorlauf);
+                    insertCommand.Parameters.AddWithValue("@Ruecklauf", ruecklauf);
+                    insertCommand.Parameters.AddWithValue("@Leistung", leistung);
+                    insertCommand.Parameters.AddWithValue("@Volumen", volumen);
+                    insertCommand.Parameters.AddWithValue("@Durchfluss", durchfluss);
+                    insertCommand.Parameters.AddWithValue("@Energie", energie);
+                    insertCommand.Parameters.AddWithValue("@Datum", heatImportDate);
+                    insertCommand.Parameters.AddWithValue("@Uhrzeit", heatImportTime);
 
                     await insertCommand.ExecuteNonQueryAsync(cancellationToken);
                 }
