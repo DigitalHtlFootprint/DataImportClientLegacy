@@ -1150,20 +1150,17 @@ namespace DataImportClientLegacy.Modules
         private static async Task<Exception?> InsertMinuteValues(string sqlConnectionString, CancellationToken cancellationToken)
         {
             string fetchQuery = @"
-                WITH OrderedData AS (
-                    SELECT *,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY DATEPART(HOUR, Datum), DATEPART(MINUTE, Datum)
-                               ORDER BY Datum ASC
-                           ) AS rn
-                    FROM Strom_sec
-                    WHERE Datum <= GETDATE()
-                )
-                SELECT TOP 5 *
-                FROM OrderedData
-                WHERE rn = 1
-                ORDER BY Datum DESC;
-                ";
+            WITH OrderedData AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (PARTITION BY DATEPART(HOUR, Datum), DATEPART(MINUTE, Datum)
+                                          ORDER BY Datum DESC) AS rn
+                FROM Strom_sec
+                WHERE Datum <= GETDATE()
+            )
+            SELECT TOP 5 *
+            FROM OrderedData
+            WHERE rn = 1
+            ORDER BY Datum DESC;";
 
             List<string> columns = [];
 
