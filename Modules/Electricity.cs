@@ -1237,18 +1237,20 @@ namespace DataImportClientLegacy.Modules
 
 
 
+                ImportWorkerLog($"Checking {rowsToInsert.Count} rows for insertion.");
+
                 foreach (var row in rowsToInsert)
                 {
                     DateTime minuteMark = new(row.Datum.Year, row.Datum.Month, row.Datum.Day, row.Datum.Hour, row.Datum.Minute, 0);
 
-                    bool minuteMarkExists = await MinuteMarkExistsAsync(databaseConnection, minuteMark);
-
-                    if (minuteMarkExists == false)
+                    if (!await MinuteMarkExistsAsync(databaseConnection, minuteMark))
                     {
+                        ImportWorkerLog($"Current minute mark '{minuteMark}' does not exist in database yet.");
                         Exception? exc = await InsertIntoProcessedData(databaseConnection, row.Datum, columns, row.Values, cancellationToken);
 
                         if (exc != null)
                         {
+                            ImportWorkerLog($"An error appeared during insertion of the current minute mark.");
                             throw exc;
                         }
                     }
@@ -1265,17 +1267,24 @@ namespace DataImportClientLegacy.Modules
 
         static async Task<bool> MinuteMarkExistsAsync(SqlConnection conn, DateTime minuteMark)
         {
-            string checkQuery = @"SELECT COUNT(*) FROM Strom_min WHERE Datum >= @MinuteMark AND Datum < DATEADD(MINUTE, 1, @MinuteMark)";
+            string checkQuery = @"
+            SELECT COUNT(*) 
+            FROM Strom_min 
+            WHERE DATEPART(HOUR, Datum) = @Hour 
+              AND DATEPART(MINUTE, Datum) = @Minute 
+              AND CAST(Datum AS DATE) = @Date";
 
             using SqlCommand checkCmd = new(checkQuery, conn);
-
-            checkCmd.Parameters.AddWithValue("@MinuteMark", minuteMark);
+            checkCmd.Parameters.AddWithValue("@Hour", minuteMark.Hour);
+            checkCmd.Parameters.AddWithValue("@Minute", minuteMark.Minute);
+            checkCmd.Parameters.AddWithValue("@Date", minuteMark.Date);
 
             object? result = await checkCmd.ExecuteScalarAsync();
             int count = Convert.ToInt32(result);
 
             return count > 0;
         }
+
 
         private static async Task<Exception?> InsertIntoProcessedData(SqlConnection conn, DateTime datum, List<string> columns, List<decimal> values, CancellationToken cancellationToken)
         {
