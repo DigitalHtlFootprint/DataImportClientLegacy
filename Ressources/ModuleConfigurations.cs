@@ -24,12 +24,10 @@
             internal string sourceFilePattern;
             internal string sourceFileIntervalSeconds;
             internal string sqlConnectionString;
-            internal string dbTableNamePower;
-            internal string dbTableNamePowerfactor;
 
             internal readonly bool HoldsInvalidValues()
             {
-                var stringFields = new string[] { sourceFilePath, sourceFilePattern, sourceFileIntervalSeconds, sqlConnectionString, dbTableNamePower, dbTableNamePowerfactor };
+                var stringFields = new string[] { sourceFilePath, sourceFilePattern, sourceFileIntervalSeconds, sqlConnectionString };
                 return stringFields.Any(string.IsNullOrEmpty);
             }
         }

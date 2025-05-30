@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 
 using DataImportClientLegacy.Scripts;
@@ -14,7 +15,11 @@ using Microsoft.Data.SqlClient;
 
 namespace DataImportClientLegacy.Modules
 {
-
+    internal class DataRowEntry
+    {
+        public DateTime Datum { get; set; }
+        public List<decimal> Values { get; set; }
+    }
 
     internal class Electricity
     {
@@ -395,6 +400,8 @@ namespace DataImportClientLegacy.Modules
 
                 ImportWorkerLog("Minimizing the fetched data.");
 
+                List<string> orignalSourcFileData = new(sourceFileData);
+
                 (List<string> minimizedSourceData, occurredError) = MinimizeSourceFileData(sourceFileData);
 
                 if (occurredError != null)
@@ -417,11 +424,49 @@ namespace DataImportClientLegacy.Modules
 
                 ImportWorkerLog("Inserting the minimized data set into the database.");
 
-                string dbTableNamePower = electricityConfiguration.dbTableNamePower;
-                string dbTableNamePowerfactor = electricityConfiguration.dbTableNamePowerfactor;
+
+
                 string sqlConnectionString = electricityConfiguration.sqlConnectionString;
 
-                occurredError = await InsertDataIntoDatabase(sqlConnectionString, dbTableNamePower, dbTableNamePowerfactor, minimizedSourceData, cancellationToken);
+                Exception? occurredErrorMillis = await InsertDataIntoDatabase(sqlConnectionString, "Strom_milli", orignalSourcFileData, cancellationToken);
+                Exception? occurredErrorSec = await InsertDataIntoDatabase(sqlConnectionString, "Strom_sec", minimizedSourceData, cancellationToken);
+
+                if (occurredErrorMillis != null)
+                {
+                    string errorMessage = "An error has occurred while inserting the data into the database.";
+                    string[] errorDetails = ["Data insertion for table 'Strom_milli' failed.", occurredErrorMillis.Message, occurredErrorMillis.InnerException?.ToString() ?? string.Empty];
+                    ThrowModuleError(errorMessage, errorDetails, ErrorCategory.DatabaseInsertion);
+
+                    MoveSourceFileToFaultyFilesFolder();
+
+                    ImportWorkerLog($"Waiting for {errorTimoutInMilliseconds / 1000} seconds before continuing with the import process.");
+
+                    await Task.Delay(errorTimoutInMilliseconds, cancellationToken);
+                    continue;
+                }
+
+                if (occurredErrorSec != null)
+                {
+                    string errorMessage = "An error has occurred while inserting the data into the database.";
+                    string[] errorDetails = ["Data insertion for table 'Strom_sec' failed.", occurredErrorSec.Message, occurredErrorSec.InnerException?.ToString() ?? string.Empty];
+
+                    ThrowModuleError(errorMessage, errorDetails, ErrorCategory.DatabaseInsertion);
+
+                    MoveSourceFileToFaultyFilesFolder();
+
+                    ImportWorkerLog($"Waiting for {errorTimoutInMilliseconds / 1000} seconds before continuing with the import process.");
+
+                    await Task.Delay(errorTimoutInMilliseconds, cancellationToken);
+                    continue;
+                }
+
+                ImportWorkerLog("Successfully inserted the data set into the database.");
+
+
+
+                ImportWorkerLog("Successfully inserted the data set into the database.");
+
+                occurredError = await InsertMinuteValues(sqlConnectionString, cancellationToken);
 
                 if (occurredError != null)
                 {
@@ -537,9 +582,7 @@ namespace DataImportClientLegacy.Modules
                     sourceFilePath = electricityModule?["sourceFilePath"]?.ToString() ?? string.Empty,
                     sourceFilePattern = electricityModule?["sourceFilePattern"]?.ToString() ?? string.Empty,
                     sourceFileIntervalSeconds = electricityModule?["sourceFileIntervalSeconds"]?.ToString() ?? string.Empty,
-                    sqlConnectionString = sqlData?["connectionString"]?.ToString() ?? string.Empty,
-                    dbTableNamePower = electricityModule?["dbTableNamePower"]?.ToString() ?? string.Empty,
-                    dbTableNamePowerfactor = electricityModule?["dbTableNamePowerfactor"]?.ToString() ?? string.Empty
+                    sqlConnectionString = sqlData?["connectionString"]?.ToString() ?? string.Empty
                 };
 
                 if (electricityConfiguration.HoldsInvalidValues() == true)
@@ -824,10 +867,10 @@ namespace DataImportClientLegacy.Modules
             return (minimizedSourceData, null);
         }
 
-        private static async Task<Exception?> InsertDataIntoDatabase(string sqlConnectionString, string dbTableNamePower, string dbTableNamePowerfactor, List<string> sourceData, CancellationToken cancellationToken)
+        private static async Task<Exception?> InsertDataIntoDatabase(string sqlConnectionString, string dbTableName, List<string> sourceData, CancellationToken cancellationToken)
         {
             (List<string> powerData, List<string> powerfactorData, Exception? occurredError) = SplitSourceData(sourceData);
-            
+
             if (occurredError != null)
             {
                 return new Exception("Failed to split the minimalized data set. " + occurredError.Message);
@@ -903,33 +946,64 @@ namespace DataImportClientLegacy.Modules
 
                 string[] columnsOrder =
                 [
-                    "@einspeisung_L1",
-                    "@einspeisung_L2",
-                    "@einspeisung_L3",
-                    "@werkstatterweiterung_L1",
-                    "@werkstatterweiterung_L2",
-                    "@werkstatterweiterung_L3",
-                    "@flur_zimmerei_L1",
-                    "@flur_zimmerei_L2",
-                    "@flur_zimmerei_L3",
-                    "@flur_tischlerei_L1",
-                    "@flur_tischlerei_L2",
-                    "@flur_tischlerei_L3",
-                    "@absaugung_tischlerei_L1",
-                    "@absaugung_tischlerei_L2",
-                    "@absaugung_tischlerei_L3",
-                    "@theorie_L1",
-                    "@theorie_L2",
-                    "@theorie_L3",
-                    "@tischlerei_L1",
-                    "@tischlerei_L2",
-                    "@tischlerei_L3",
-                    "@keller_L1",
-                    "@keller_L2",
-                    "@keller_L3",
-                    "@absaugung_steinmetz_L1",
-                    "@absaugung_steinmetz_L2",
-                    "@absaugung_steinmetz_L3"
+                    "@Power1",
+                    "@Power2",
+                    "@Power3",
+                    "@Power4",
+                    "@Power5",
+                    "@Power6",
+                    "@Power7",
+                    "@Power8",
+                    "@Power9",
+                    "@Power10",
+                    "@Power11",
+                    "@Power12",
+                    "@Power13",
+                    "@Power14",
+                    "@Power15",
+                    "@Power16",
+                    "@Power17",
+                    "@Power18",
+                    "@Power19",
+                    "@Power20",
+                    "@Power21",
+                    "@Power22",
+                    "@Power23",
+                    "@Power24",
+                    "@Power25",
+                    "@Power26",
+                    "@Power27",
+                ];
+
+                string[] columnsOrderPhi =
+                [
+                    "@phi1",
+                    "@phi2",
+                    "@phi3",
+                    "@phi4",
+                    "@phi5",
+                    "@phi6",
+                    "@phi7",
+                    "@phi8",
+                    "@phi9",
+                    "@phi10",
+                    "@phi11",
+                    "@phi12",
+                    "@phi13",
+                    "@phi14",
+                    "@phi15",
+                    "@phi16",
+                    "@phi17",
+                    "@phi18",
+                    "@phi19",
+                    "@phi20",
+                    "@phi21",
+                    "@phi22",
+                    "@phi23",
+                    "@phi24",
+                    "@phi25",
+                    "@phi26",
+                    "@phi27",
                 ];
 
 
@@ -938,47 +1012,27 @@ namespace DataImportClientLegacy.Modules
 
                 try
                 {
-                    string queryNamesPower = "power_date, power_time, " + string.Join(", ", columnsOrder).Replace("@", string.Empty);
-                    string queryValuesPower = "@power_date, @power_time, " + string.Join(", ", columnsOrder);
-                    string queryInsertPower = $"INSERT INTO {dbTableNamePower} ({queryNamesPower}) VALUES ({queryValuesPower}); SELECT SCOPE_IDENTITY();";
-                    
-                    using SqlCommand insertCommandPower = new(queryInsertPower, databaseConnection, transaction);
+                    string queryNames = "Datum, " + string.Join(", ", columnsOrder).Replace("@", string.Empty) + ", " + string.Join(", ", columnsOrderPhi).Replace("@", string.Empty);
+                    string queryValues = "@Datum, " + string.Join(", ", columnsOrder) + ", " + string.Join(", ", columnsOrderPhi);
+                    string queryInsert = $"INSERT INTO {dbTableName} ({queryNames}) VALUES ({queryValues});";
 
-                    insertCommandPower.Parameters.AddWithValue("@power_date", importDate);
-                    insertCommandPower.Parameters.AddWithValue("@power_time", importTime);
+                    using SqlCommand insertCommand = new(queryInsert, databaseConnection, transaction);
+
+                    DateTime fullDateTime = importDate.Add(importTime);
+                    insertCommand.Parameters.Add("@Datum", SqlDbType.DateTime).Value = fullDateTime;
+
 
                     for (int columnIndex = 0; columnIndex < columnsOrder.Length; columnIndex++)
                     {
-                        insertCommandPower.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerDataRow.Split(";")[columnIndex]));
+                        insertCommand.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerDataRow.Split(";")[columnIndex]));
                     }
 
-                    int lastPowerId = -1;
-
-                    lastPowerId = Convert.ToInt32(await insertCommandPower.ExecuteScalarAsync(cancellationToken));
-
-                    if (lastPowerId == -1)
+                    for (int columnIndex = 0; columnIndex < columnsOrderPhi.Length; columnIndex++)
                     {
-                        throw new Exception("Failed to get last inserted PowerId.");
+                        insertCommand.Parameters.AddWithValue(columnsOrderPhi[columnIndex], Convert.ToDecimal(currentPowerfactorDataRow.Split(";")[columnIndex]));
                     }
 
-
-
-                    string queryNamesPowerfactor = "powerfactor_date, powerfactor_time, power_id, " + string.Join(", ", columnsOrder).Replace("@", string.Empty);
-                    string queryValuesPowerfactor = "@powerfactor_date, @powerfactor_time, @power_id, " + string.Join(", ", columnsOrder);
-                    string queryInsertPowerfactor = $"INSERT INTO {dbTableNamePowerfactor} ({queryNamesPowerfactor}) VALUES ({queryValuesPowerfactor}); SELECT SCOPE_IDENTITY();";
-
-                    using SqlCommand insertCommandPowerfactor = new(queryInsertPowerfactor, databaseConnection, transaction);
-
-                    insertCommandPowerfactor.Parameters.AddWithValue("@powerfactor_date", importDate);
-                    insertCommandPowerfactor.Parameters.AddWithValue("@powerfactor_time", importTime);
-                    insertCommandPowerfactor.Parameters.AddWithValue("@power_id", lastPowerId);
-
-                    for (int columnIndex = 0; columnIndex < columnsOrder.Length; columnIndex++)
-                    {
-                        insertCommandPowerfactor.Parameters.AddWithValue(columnsOrder[columnIndex], Convert.ToDecimal(currentPowerfactorDataRow.Split(";")[columnIndex]));
-                    }
-
-                    await insertCommandPowerfactor.ExecuteNonQueryAsync(cancellationToken);
+                    await insertCommand.ExecuteScalarAsync(cancellationToken);
 
                     transaction.Commit();
                 }
@@ -1092,6 +1146,165 @@ namespace DataImportClientLegacy.Modules
                 string errorMessage = "Failed to move the current source file.";
                 string[] errorDetails = [exception.Message, exception.InnerException?.ToString() ?? string.Empty, $"File path: {_currentSourceFilePath}."];
                 ThrowModuleError(errorMessage, errorDetails, ErrorCategory.FileMoving);
+            }
+        }
+
+        private static async Task<Exception?> InsertMinuteValues(string sqlConnectionString, CancellationToken cancellationToken)
+        {
+            string fetchQuery = @"
+                WITH OrderedData AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY DATEPART(HOUR, Datum), DATEPART(MINUTE, Datum)
+                               ORDER BY Datum ASC
+                           ) AS rn
+                    FROM Strom_sec
+                    WHERE Datum <= GETDATE()
+                )
+                SELECT TOP 5 *
+                FROM OrderedData
+                WHERE rn = 1
+                ORDER BY Datum DESC;
+                ";
+
+            List<string> columns = [];
+
+            for (int i = 1; i <= 27; i++)
+            {
+                columns.Add($"Power{i}");
+                columns.Add($"Phi{i}");
+            }
+
+
+
+            ImportWorkerLog("Trying to establish a database connection for minute insertion.");
+
+            SqlConnection databaseConnection;
+
+            try
+            {
+                if (sqlConnectionString.Contains("connect timeout", StringComparison.CurrentCultureIgnoreCase) == false)
+                {
+                    sqlConnectionString += "Connect Timeout=5;";
+                }
+
+                databaseConnection = new(sqlConnectionString);
+
+                await databaseConnection.OpenAsync(cancellationToken);
+            }
+            catch (SqlException exception)
+            {
+                if (exception.Number == -2)
+                {
+                    return new Exception("Failed to establish a database connection due to a timeout.");
+                }
+
+                return new Exception("Failed to establish a database connection. " + exception.Message);
+            }
+            catch (Exception exception)
+            {
+                return new Exception("An error occurred while connection to the database. " + exception.Message);
+            }
+
+            ImportWorkerLog("Successfully established a database connection for minute insertion.");
+
+            List<DataRowEntry> rowsToInsert = [];
+
+            try
+            {
+                using (SqlCommand fetchCmd = new(fetchQuery, databaseConnection))
+                using (SqlDataReader reader = fetchCmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        DateTime datum = (DateTime)reader["Datum"];
+                        List<decimal> values = [];
+
+                        foreach (var col in columns)
+                        {
+                            values.Add(Convert.ToDecimal(reader[col]));
+                        }
+
+                        rowsToInsert.Add(new DataRowEntry
+                        {
+                            Datum = datum,
+                            Values = values
+                        });
+                    }
+                }
+
+
+
+                rowsToInsert.Reverse();
+
+
+
+                foreach (var row in rowsToInsert)
+                {
+                    DateTime minuteMark = new(row.Datum.Year, row.Datum.Month, row.Datum.Day, row.Datum.Hour, row.Datum.Minute, 0);
+
+                    bool minuteMarkExists = await MinuteMarkExistsAsync(databaseConnection, minuteMark);
+
+                    if (minuteMarkExists == false)
+                    {
+                        Exception? exc = await InsertIntoProcessedData(databaseConnection, row.Datum, columns, row.Values, cancellationToken);
+
+                        if (exc != null)
+                        {
+                            throw exc;
+                        }
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                return exc;
+            }
+
+
+            return null;
+        }
+
+        static async Task<bool> MinuteMarkExistsAsync(SqlConnection conn, DateTime minuteMark)
+        {
+            string checkQuery = @"SELECT COUNT(*) FROM Strom_min WHERE Datum >= @MinuteMark AND Datum<DATEADD(MINUTE, 1, @MinuteMark)";
+
+            using SqlCommand checkCmd = new(checkQuery, conn);
+
+            checkCmd.Parameters.AddWithValue("@Hour", minuteMark.Hour);
+            checkCmd.Parameters.AddWithValue("@Minute", minuteMark.Minute);
+            checkCmd.Parameters.AddWithValue("@Date", minuteMark.Date);
+
+            object? result = await checkCmd.ExecuteScalarAsync();
+            int count = Convert.ToInt32(result);
+
+            return count > 0;
+        }
+
+        private static async Task<Exception?> InsertIntoProcessedData(SqlConnection conn, DateTime datum, List<string> columns, List<decimal> values, CancellationToken cancellationToken)
+        {
+            try
+            {
+                string columnNames = "Datum, " + string.Join(", ", columns);
+                string paramNames = "@Datum, " + string.Join(", ", columns.ConvertAll(c => "@" + c));
+
+                string insertQuery = $@"INSERT INTO Strom_min ({columnNames}) VALUES ({paramNames});";
+
+                using SqlCommand insertCmd = new(insertQuery, conn);
+                insertCmd.Parameters.AddWithValue("@Datum", datum);
+
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    insertCmd.Parameters.AddWithValue("@" + columns[i], values[i]);
+                }
+
+                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+
+                return null;
+            }
+            catch (Exception exc)
+            {
+                return exc;
             }
         }
     }
