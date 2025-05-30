@@ -1243,7 +1243,7 @@ namespace DataImportClientLegacy.Modules
                 {
                     DateTime minuteMark = new(row.Datum.Year, row.Datum.Month, row.Datum.Day, row.Datum.Hour, row.Datum.Minute, 0);
 
-                    if (!await MinuteMarkExistsAsync(databaseConnection, minuteMark))
+                    if (!MinuteMarkExists(databaseConnection, minuteMark))
                     {
                         ImportWorkerLog($"Current minute mark '{minuteMark}' does not exist in database yet.");
                         Exception? exc = await InsertIntoProcessedData(databaseConnection, row.Datum, columns, row.Values, cancellationToken);
@@ -1265,7 +1265,7 @@ namespace DataImportClientLegacy.Modules
             return null;
         }
 
-        static async Task<bool> MinuteMarkExistsAsync(SqlConnection conn, DateTime minuteMark)
+        static bool MinuteMarkExists(SqlConnection conn, DateTime minuteMark)
         {
             string checkQuery = @"
             SELECT COUNT(*) 
@@ -1279,10 +1279,11 @@ namespace DataImportClientLegacy.Modules
             checkCmd.Parameters.AddWithValue("@Minute", minuteMark.Minute);
             checkCmd.Parameters.AddWithValue("@Date", minuteMark.Date);
 
-            object? result = await checkCmd.ExecuteScalarAsync();
-            int count = Convert.ToInt32(result);
+            int count = (int)checkCmd.ExecuteScalar();
 
-            return count > 0;
+            bool isGreaterThanZero = count > 0;
+
+            return isGreaterThanZero;
         }
 
 
