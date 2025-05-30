@@ -1265,13 +1265,11 @@ namespace DataImportClientLegacy.Modules
 
         static async Task<bool> MinuteMarkExistsAsync(SqlConnection conn, DateTime minuteMark)
         {
-            string checkQuery = @"SELECT COUNT(*) FROM Strom_min WHERE Datum >= @MinuteMark AND Datum<DATEADD(MINUTE, 1, @MinuteMark)";
+            string checkQuery = @"SELECT COUNT(*) FROM Strom_min WHERE Datum >= @MinuteMark AND Datum < DATEADD(MINUTE, 1, @MinuteMark)";
 
             using SqlCommand checkCmd = new(checkQuery, conn);
 
-            checkCmd.Parameters.AddWithValue("@Hour", minuteMark.Hour);
-            checkCmd.Parameters.AddWithValue("@Minute", minuteMark.Minute);
-            checkCmd.Parameters.AddWithValue("@Date", minuteMark.Date);
+            checkCmd.Parameters.AddWithValue("@MinuteMark", minuteMark);
 
             object? result = await checkCmd.ExecuteScalarAsync();
             int count = Convert.ToInt32(result);
