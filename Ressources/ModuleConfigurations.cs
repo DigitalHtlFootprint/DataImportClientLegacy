@@ -52,11 +52,10 @@
             internal string solarwebSystemId;
             internal string apiIntervalSeconds;
             internal string sqlConnectionString;
-            internal string dbTableName;
 
             internal readonly bool HoldsInvalidValues()
             {
-                var stringFields = new string[] { solarwebEmail, solarwebPassword, solarwebSystemId, apiIntervalSeconds, sqlConnectionString, dbTableName };
+                var stringFields = new string[] { solarwebEmail, solarwebPassword, solarwebSystemId, apiIntervalSeconds, sqlConnectionString };
                 return stringFields.Any(string.IsNullOrEmpty);
             }
         }
