@@ -9,11 +9,10 @@
             internal string apiLocation;
             internal string apiIntervalSeconds;
             internal string sqlConnectionString;
-            internal string dbTableName;
 
             internal readonly bool HoldsInvalidValues()
             {
-                var stringFields = new string[] { apiUrl, apiKey, apiLocation, apiIntervalSeconds, sqlConnectionString, dbTableName };
+                var stringFields = new string[] { apiUrl, apiKey, apiLocation, apiIntervalSeconds, sqlConnectionString };
                 return stringFields.Any(string.IsNullOrEmpty);
             }
         }
